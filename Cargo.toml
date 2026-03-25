@@ -1,0 +1,67 @@
+[package]
+name = "intel-ai"
+version = "0.1.0"
+edition = "2021"
+authors = ["CuriousAbe"]
+description = "AI-powered intelligence system — auto-discover sources, verify facts, deep analysis, personalized delivery"
+license = "MIT"
+
+[[bin]]
+name = "intel-ai"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Web framework
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+
+# Vector database
+qdrant-client = "1"
+
+# Full-text search
+tantivy = "0.22"
+
+# Web crawling
+spider = "2"
+
+# Logging & tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Date & time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Configuration
+config = "0.14"
+
+# Async trait
+async-trait = "0.1"
+
+# Futures
+futures = "0.3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
