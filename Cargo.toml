@@ -70,6 +70,13 @@ scraper = "0.22"
 # URL encoding/decoding
 urlencoding = "2"
 
+# OAuth / auth
+sha2 = "0.10"
+base64 = "0.22"
+rand = "0.8"
+open = "5"
+dirs = "5"
+
 [profile.release]
 opt-level = 3
 lto = true
