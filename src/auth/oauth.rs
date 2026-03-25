@@ -12,7 +12,7 @@ const AUTH_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
 const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
-const SCOPES: &str = "openid profile email offline_access";
+const SCOPES: &str = "openid profile email offline_access api.responses.write api.responses.read";
 const CALLBACK_PORT: u16 = 1455;
 
 fn base64url_encode(input: &[u8]) -> String {
@@ -149,11 +149,19 @@ fn parse_token_response(json: &serde_json::Value) -> Result<TokenData> {
         .unwrap_or("Bearer")
         .to_string();
 
+    // Capture the granted scopes from the response; fall back to the
+    // requested scopes so that freshly-minted tokens always pass the check.
+    let scopes = json["scope"]
+        .as_str()
+        .map(String::from)
+        .or_else(|| Some(SCOPES.to_string()));
+
     Ok(TokenData {
         access_token,
         refresh_token,
         expires_at,
         token_type,
+        scopes,
     })
 }
 

@@ -59,21 +59,31 @@ async fn resolve_api_key(client: &reqwest::Client) -> Result<String> {
 
     // Priority 2: cached OAuth token
     if let Ok(Some(token)) = auth::token_store::load_token() {
-        if auth::token_store::is_token_valid(&token) {
+        // Check that the token has the required API scopes.
+        // Old tokens obtained before scope tracking was added will be missing
+        // api.responses.write; clear them and re-authenticate automatically.
+        if !auth::token_store::has_required_scopes(&token) {
+            eprintln!("⚠  已缓存的 Token 缺少必要的 scope（api.responses.write）。");
+            eprintln!("   正在清除旧 Token，重新发起 OAuth 认证...\n");
+            if let Ok(path) = auth::token_store::token_file_path() {
+                let _ = std::fs::remove_file(&path);
+            }
+            // Fall through to interactive OAuth below
+        } else if auth::token_store::is_token_valid(&token) {
             return Ok(token.access_token);
-        }
-
-        // Try to refresh if we have a refresh token
-        if let Some(ref refresh_tok) = token.refresh_token {
-            println!("🔄 Access Token 已过期，正在自动刷新...");
-            match auth::oauth::refresh_access_token(client, refresh_tok).await {
-                Ok(new_token) => {
-                    let _ = auth::token_store::save_token(&new_token);
-                    println!("✅ Token 刷新成功\n");
-                    return Ok(new_token.access_token);
-                }
-                Err(e) => {
-                    eprintln!("⚠ Token 刷新失败: {}，将重新登录\n", e);
+        } else {
+            // Try to refresh if we have a refresh token
+            if let Some(ref refresh_tok) = token.refresh_token {
+                println!("🔄 Access Token 已过期，正在自动刷新...");
+                match auth::oauth::refresh_access_token(client, refresh_tok).await {
+                    Ok(new_token) => {
+                        let _ = auth::token_store::save_token(&new_token);
+                        println!("✅ Token 刷新成功\n");
+                        return Ok(new_token.access_token);
+                    }
+                    Err(e) => {
+                        eprintln!("⚠ Token 刷新失败: {}，将重新登录\n", e);
+                    }
                 }
             }
         }
