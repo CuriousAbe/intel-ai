@@ -34,13 +34,16 @@ pub async fn analyze(
         "max_output_tokens": 2500
     });
 
-    let response = client
+    let mut request = client
         .post(&url)
         .header("Authorization", format!("Bearer {}", config.llm_api_key))
-        .header("Content-Type", "application/json")
-        .json(&body)
-        .send()
-        .await?;
+        .header("Content-Type", "application/json");
+
+    if let Some(ref account_id) = config.account_id {
+        request = request.header("openai-account-id", account_id);
+    }
+
+    let response = request.json(&body).send().await?;
 
     if !response.status().is_success() {
         let status = response.status();

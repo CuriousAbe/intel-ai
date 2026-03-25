@@ -1,4 +1,5 @@
 use anyhow::Result;
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -56,6 +57,35 @@ pub fn save_token(token: &TokenData) -> Result<()> {
     let content = serde_json::to_string_pretty(token)?;
     std::fs::write(&path, content)?;
     Ok(())
+}
+
+/// Parse the `chatgpt_account_id` from a JWT access token payload.
+/// Does not verify the signature — only reads the claims.
+pub fn parse_jwt_account_id(jwt: &str) -> Option<String> {
+    let parts: Vec<&str> = jwt.split('.').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+    let payload = URL_SAFE_NO_PAD.decode(parts[1]).ok()?;
+    let claims: serde_json::Value = serde_json::from_slice(&payload).ok()?;
+
+    // Try nested claim: https://api.openai.com/auth.chatgpt_account_id
+    if let Some(id) = claims
+        .get("https://api.openai.com/auth")
+        .and_then(|v| v.get("chatgpt_account_id"))
+        .and_then(|v| v.as_str())
+    {
+        return Some(id.to_string());
+    }
+    // Try top-level chatgpt_account_id
+    if let Some(id) = claims.get("chatgpt_account_id").and_then(|v| v.as_str()) {
+        return Some(id.to_string());
+    }
+    // Try generic account_id
+    claims
+        .get("account_id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
 }
 
 pub fn is_token_valid(token: &TokenData) -> bool {

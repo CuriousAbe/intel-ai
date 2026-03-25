@@ -39,8 +39,9 @@ async fn main() -> Result<()> {
 
         if !topic.is_empty() {
             let client = build_http_client()?;
-            let api_key = resolve_api_key(&client).await?;
-            return intelligence::run_intelligence_report_with_key(&topic, api_key).await;
+            let (api_key, account_id) = resolve_api_key(&client).await?;
+            return intelligence::run_intelligence_report_with_key(&topic, api_key, account_id)
+                .await;
         }
     }
 
@@ -48,12 +49,14 @@ async fn main() -> Result<()> {
     run_server().await
 }
 
-/// Resolve the API key: env var > cached OAuth token > interactive OAuth flow.
-async fn resolve_api_key(client: &reqwest::Client) -> Result<String> {
-    // Priority 1: LLM_API_KEY env var
+/// Resolve the API key and account ID: env var > cached OAuth token > interactive OAuth flow.
+/// Returns (access_token, account_id).
+async fn resolve_api_key(client: &reqwest::Client) -> Result<(String, Option<String>)> {
+    // Priority 1: LLM_API_KEY env var (no account_id available in this case)
     if let Ok(key) = std::env::var("LLM_API_KEY") {
         if !key.is_empty() && key != "your_api_key_here" {
-            return Ok(key);
+            let account_id = auth::token_store::parse_jwt_account_id(&key);
+            return Ok((key, account_id));
         }
     }
 
@@ -70,7 +73,8 @@ async fn resolve_api_key(client: &reqwest::Client) -> Result<String> {
             }
             // Fall through to interactive OAuth below
         } else if auth::token_store::is_token_valid(&token) {
-            return Ok(token.access_token);
+            let account_id = auth::token_store::parse_jwt_account_id(&token.access_token);
+            return Ok((token.access_token, account_id));
         } else {
             // Try to refresh if we have a refresh token
             if let Some(ref refresh_tok) = token.refresh_token {
@@ -79,7 +83,9 @@ async fn resolve_api_key(client: &reqwest::Client) -> Result<String> {
                     Ok(new_token) => {
                         let _ = auth::token_store::save_token(&new_token);
                         println!("✅ Token 刷新成功\n");
-                        return Ok(new_token.access_token);
+                        let account_id =
+                            auth::token_store::parse_jwt_account_id(&new_token.access_token);
+                        return Ok((new_token.access_token, account_id));
                     }
                     Err(e) => {
                         eprintln!("⚠ Token 刷新失败: {}，将重新登录\n", e);
@@ -94,7 +100,8 @@ async fn resolve_api_key(client: &reqwest::Client) -> Result<String> {
     let token = auth::oauth::run_oauth_flow(client).await?;
     auth::token_store::save_token(&token)?;
     println!("\n✅ 登录成功！Token 已保存到 ~/.intel-ai/auth.json\n");
-    Ok(token.access_token)
+    let account_id = auth::token_store::parse_jwt_account_id(&token.access_token);
+    Ok((token.access_token, account_id))
 }
 
 /// Handle `cargo run -- auth [--status]`

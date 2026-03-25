@@ -12,6 +12,8 @@ pub struct IntelConfig {
     pub llm_model: String,
     pub max_search_results: usize,
     pub max_content_chars: usize,
+    /// ChatGPT account ID extracted from the OAuth JWT; used as `openai-account-id` header.
+    pub account_id: Option<String>,
 }
 
 impl IntelConfig {
@@ -25,20 +27,26 @@ impl IntelConfig {
         Self {
             llm_api_key: api_key,
             llm_api_base_url: env::var("LLM_API_BASE_URL")
-                .unwrap_or_else(|_| "https://api.openai.com/v1".to_string()),
+                .unwrap_or_else(|_| "https://chatgpt.com/backend-api/codex".to_string()),
             llm_model: env::var("LLM_MODEL").unwrap_or_else(|_| "codex-5.3".to_string()),
             max_search_results: env::var("MAX_SEARCH_RESULTS")
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(8),
             max_content_chars: 50_000,
+            account_id: None,
         }
     }
 }
 
 /// Run an intelligence report using the given API key (from env or OAuth).
-pub async fn run_intelligence_report_with_key(topic: &str, api_key: String) -> Result<()> {
-    let config = IntelConfig::with_api_key(api_key);
+pub async fn run_intelligence_report_with_key(
+    topic: &str,
+    api_key: String,
+    account_id: Option<String>,
+) -> Result<()> {
+    let mut config = IntelConfig::with_api_key(api_key);
+    config.account_id = account_id;
     run_report_with_config(topic, config).await
 }
 
