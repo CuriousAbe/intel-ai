@@ -12,7 +12,7 @@ const AUTH_URL: &str = "https://auth.openai.com/oauth/authorize";
 const TOKEN_URL: &str = "https://auth.openai.com/oauth/token";
 const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
 const REDIRECT_URI: &str = "http://localhost:1455/auth/callback";
-const SCOPES: &str = "openid profile email offline_access api.responses.write api.responses.read";
+const SCOPES: &str = "openid profile email offline_access";
 const CALLBACK_PORT: u16 = 1455;
 
 fn base64url_encode(input: &[u8]) -> String {

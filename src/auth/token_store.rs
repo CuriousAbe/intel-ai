@@ -3,9 +3,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-/// Scopes that must be present for the Responses API to work.
-pub const REQUIRED_SCOPES: &[&str] = &["api.responses.write"];
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenData {
     pub access_token: String,
@@ -13,20 +10,23 @@ pub struct TokenData {
     pub expires_at: Option<DateTime<Utc>>,
     pub token_type: String,
     /// Space-separated scope string recorded at token-issuance time.
-    /// `None` means the token was obtained before scope tracking was added
-    /// and may be missing required scopes.
+    /// `None` means the token was obtained before scope tracking was added.
     #[serde(default)]
     pub scopes: Option<String>,
 }
 
-/// Returns `true` only when all `REQUIRED_SCOPES` are present.
-/// A token with `scopes == None` (legacy) is treated as missing scopes.
+/// Returns `true` when the token was obtained with the correct scopes.
+/// Tokens containing `api.responses.write` are legacy tokens from a broken
+/// OAuth flow (OpenAI rejects that scope with `invalid_scope`) and must be
+/// discarded so the user re-authenticates with the fixed scope set.
 pub fn has_required_scopes(token: &TokenData) -> bool {
     match &token.scopes {
-        None => false,
+        None => false, // No scope info — treat as legacy
         Some(s) => {
             let granted: Vec<&str> = s.split_whitespace().collect();
-            REQUIRED_SCOPES.iter().all(|req| granted.contains(req))
+            // Must have openid (basic validity) and must NOT carry the
+            // legacy broken scope that triggers invalid_scope on OpenAI.
+            granted.contains(&"openid") && !granted.contains(&"api.responses.write")
         }
     }
 }

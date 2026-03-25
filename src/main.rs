@@ -63,8 +63,8 @@ async fn resolve_api_key(client: &reqwest::Client) -> Result<String> {
         // Old tokens obtained before scope tracking was added will be missing
         // api.responses.write; clear them and re-authenticate automatically.
         if !auth::token_store::has_required_scopes(&token) {
-            eprintln!("⚠  已缓存的 Token 缺少必要的 scope（api.responses.write）。");
-            eprintln!("   正在清除旧 Token，重新发起 OAuth 认证...\n");
+            eprintln!("⚠  已缓存的 Token 包含无效的旧 scope（api.responses.write）或缺少 openid scope。");
+            eprintln!("   正在清除旧 Token，重新发起 OAuth 认证（scope 已修复为 openid profile email offline_access）...\n");
             if let Ok(path) = auth::token_store::token_file_path() {
                 let _ = std::fs::remove_file(&path);
             }
