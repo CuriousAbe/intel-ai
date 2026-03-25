@@ -2,6 +2,7 @@ mod agents;
 mod analysis;
 mod api;
 mod config;
+mod intelligence;
 mod personalization;
 mod pipeline;
 mod sources;
@@ -13,7 +14,14 @@ use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize tracing
+    // CLI mode: cargo run -- "topic keyword"
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() >= 2 && !args[1].starts_with('-') {
+        let topic = args[1..].join(" ");
+        return intelligence::run_intelligence_report(&topic).await;
+    }
+
+    // Server mode
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
@@ -23,11 +31,9 @@ async fn main() -> Result<()> {
 
     info!("Intel-AI system starting...");
 
-    // Load configuration
     let cfg = config::AppConfig::load()?;
     info!("Configuration loaded: env={}", cfg.env);
 
-    // Start API server
     let router = api::build_router();
     let addr = format!("{}:{}", cfg.server.host, cfg.server.port);
     info!("Listening on {}", addr);

@@ -61,6 +61,15 @@ async-trait = "0.1"
 # Futures
 futures = "0.3"
 
+# .env file loading
+dotenvy = "0.15"
+
+# HTML parsing
+scraper = "0.22"
+
+# URL encoding/decoding
+urlencoding = "2"
+
 [profile.release]
 opt-level = 3
 lto = true
