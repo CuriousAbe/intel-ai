@@ -12,7 +12,7 @@ pub async fn analyze(
     content: &str,
 ) -> Result<String> {
     let url = format!(
-        "{}/chat/completions",
+        "{}/responses",
         config.llm_api_base_url.trim_end_matches('/')
     );
 
@@ -20,7 +20,7 @@ pub async fn analyze(
 
     let body = json!({
         "model": config.llm_model,
-        "messages": [
+        "input": [
             {
                 "role": "system",
                 "content": "你是一名专业情报分析师，擅长从海量原始信息中提炼关键洞见，输出结构清晰、专业准确的情报摘要。"
@@ -31,7 +31,7 @@ pub async fn analyze(
             }
         ],
         "temperature": 0.5,
-        "max_tokens": 2500
+        "max_output_tokens": 2500
     });
 
     let response = client
@@ -50,8 +50,16 @@ pub async fn analyze(
 
     let resp_json: Value = response.json().await?;
 
-    let text = resp_json["choices"][0]["message"]["content"]
-        .as_str()
+    let text = resp_json["output"]
+        .as_array()
+        .and_then(|arr| arr.iter().find(|item| item["type"] == "message"))
+        .and_then(|msg| msg["content"].as_array())
+        .and_then(|content| {
+            content
+                .iter()
+                .find(|item| item["type"] == "output_text")
+                .and_then(|item| item["text"].as_str())
+        })
         .ok_or_else(|| anyhow::anyhow!("LLM 响应格式异常:\n{}", resp_json))?
         .to_string();
 
