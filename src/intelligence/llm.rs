@@ -1,4 +1,5 @@
 use anyhow::Result;
+use futures::StreamExt;
 use reqwest::Client;
 use serde_json::{json, Value};
 
@@ -27,8 +28,8 @@ pub async fn analyze(
                 "content": prompt
             }
         ],
-        "temperature": 0.5,
-        "max_output_tokens": 2500
+        "store": false,
+        "stream": true
     });
 
     let mut request = client
@@ -48,22 +49,36 @@ pub async fn analyze(
         return Err(anyhow::anyhow!("LLM API 错误 {}: {}", status, error_body));
     }
 
-    let resp_json: Value = response.json().await?;
+    // Parse SSE stream and collect output_text delta chunks
+    let mut stream = response.bytes_stream();
+    let mut output = String::new();
 
-    let text = resp_json["output"]
-        .as_array()
-        .and_then(|arr| arr.iter().find(|item| item["type"] == "message"))
-        .and_then(|msg| msg["content"].as_array())
-        .and_then(|content| {
-            content
-                .iter()
-                .find(|item| item["type"] == "output_text")
-                .and_then(|item| item["text"].as_str())
-        })
-        .ok_or_else(|| anyhow::anyhow!("LLM 响应格式异常:\n{}", resp_json))?
-        .to_string();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        let text = String::from_utf8_lossy(&chunk);
+        for line in text.lines() {
+            let line = line.trim();
+            if let Some(data) = line.strip_prefix("data: ") {
+                if data == "[DONE]" {
+                    break;
+                }
+                if let Ok(event) = serde_json::from_str::<Value>(data) {
+                    // response.output_text.delta events carry the text
+                    if event["type"] == "response.output_text.delta" {
+                        if let Some(delta) = event["delta"].as_str() {
+                            output.push_str(delta);
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-    Ok(text)
+    if output.is_empty() {
+        return Err(anyhow::anyhow!("LLM 响应为空，未收到任何文本输出"));
+    }
+
+    Ok(output)
 }
 
 fn build_prompt(topic: &str, content: &str) -> String {
