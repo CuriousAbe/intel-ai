@@ -28,7 +28,7 @@ impl IntelConfig {
             llm_api_key: api_key,
             llm_api_base_url: env::var("LLM_API_BASE_URL")
                 .unwrap_or_else(|_| "https://chatgpt.com/backend-api/codex".to_string()),
-            llm_model: env::var("LLM_MODEL").unwrap_or_else(|_| "codex-5.3".to_string()),
+            llm_model: env::var("LLM_MODEL").unwrap_or_else(|_| "gpt-5.3-codex".to_string()),
             max_search_results: env::var("MAX_SEARCH_RESULTS")
                 .ok()
                 .and_then(|v| v.parse().ok())
