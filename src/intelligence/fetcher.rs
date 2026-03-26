@@ -62,7 +62,13 @@ fn extract_main_text(html: &str) -> String {
                 if cleaned.len() > 150 {
                     // Limit per page to avoid bloating the LLM context
                     return if cleaned.len() > 4000 {
-                        cleaned[..4000].to_string()
+                        let end = cleaned
+                            .char_indices()
+                            .map(|(i, _)| i)
+                            .take_while(|&i| i <= 4000)
+                            .last()
+                            .unwrap_or(0);
+                        cleaned[..end].to_string()
                     } else {
                         cleaned
                     };
