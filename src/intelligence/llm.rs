@@ -21,7 +21,12 @@ pub async fn analyze(
     let body = json!({
         "model": config.llm_model,
         "instructions": "你是一名专业情报分析师，擅长从海量原始信息中提炼关键洞见，输出结构清晰、专业准确的情报摘要。",
-        "input": prompt,
+        "input": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
         "temperature": 0.5,
         "max_output_tokens": 2500
     });
