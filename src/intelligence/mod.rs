@@ -62,7 +62,7 @@ async fn run_report_with_config(topic: &str, config: IntelConfig) -> Result<()> 
 
     let client = Client::builder()
         .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .timeout(std::time::Duration::from_secs(30))
+        .timeout(std::time::Duration::from_secs(300))
         .build()?;
 
     // Step 1: Search

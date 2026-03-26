@@ -52,14 +52,19 @@ pub async fn analyze(
     // Parse SSE stream and collect output_text delta chunks
     let mut stream = response.bytes_stream();
     let mut output = String::new();
+    let mut done = false;
 
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
+    while !done {
+        let chunk = match stream.next().await {
+            Some(c) => c?,
+            None => break,
+        };
         let text = String::from_utf8_lossy(&chunk);
         for line in text.lines() {
             let line = line.trim();
             if let Some(data) = line.strip_prefix("data: ") {
                 if data == "[DONE]" {
+                    done = true;
                     break;
                 }
                 if let Ok(event) = serde_json::from_str::<Value>(data) {
